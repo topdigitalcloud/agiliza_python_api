@@ -1,54 +1,51 @@
 from flask import Flask, jsonify, request
-from bs4 import BeautifulSoup
-import requests
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 app = Flask(__name__)
 
-@app.route('/scrape', methods=['POST'])
-def scrape_site():
+@app.route('/interact', methods=['POST'])
+def interact_with_site():
     url = request.json.get('url')
-    if not url:
-        return jsonify({"error": "URL is required"}), 400
-
-    try:
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        # Exemplo simples: extrair todos os títulos de parágrafos (p tags) da página
-        paragraphs = [p.get_text() for p in soup.find_all('p')]
-        return jsonify({"paragraphs": paragraphs})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/submit_form', methods=['POST'])
-def submit_form():
-    # URL do site que contém o formulário
-    target_url = 'https://sistemas.anatel.gov.br/Boleto/Internet/Tela.asp'  # substitua pela URL correta da página
+    cnpj_cpf = request.json.get('cnpj_cpf')
+    fistel = request.json.get('fistel')
     
-    cnpj_cpf = request.json.get('NumCNPJCPF')
-    fistel = request.json.get('NumFistel')
+    if not url or not cnpj_cpf or not fistel:
+        return jsonify({"error": "URL, CNPJ/CPF, and Fistel are required"}), 400
 
-    if not cnpj_cpf or not fistel:
-        return jsonify({"error": "Both NumCNPJCPF and NumFistel are required"}), 400
+    options = webdriver.ChromeOptions()
+    # Se eventualmente você for adaptar para um servidor sem interface gráfica, descomente a linha abaixo.
+    # options.add_argument("--headless")
+    
+    driver = webdriver.Chrome(executable_path="/usr/local/bin/chromedriver")
 
-    data = {
-        'NumCNPJCPF': cnpj_cpf,
-        'NumFistel': fistel,
-        'acao': 'c',
-        'cmd': ''
-    }
 
     try:
-        response = requests.post(target_url, data=data)
-        soup = BeautifulSoup(response.content, 'html.parser')
+        driver.get(url)
         
-        # Aqui você pode adicionar lógica para extrair informações da resposta, se necessário
-        # Por exemplo: verificar se há alguma mensagem de erro na página resultante
-        
-        return jsonify({"message": "Form submitted successfully!"})
+        # Preencher CNPJ/CPF e Fistel
+        driver.find_element(By.ID, "NumCNPJCPF").send_keys(cnpj_cpf)
+        driver.find_element(By.ID, "NumFistel").send_keys(fistel)
 
+        # Clicar no botão de confirmação
+        driver.find_element(By.ID, "botaoFlatConfirmar").click()
+
+        # Aguardar e clicar no botão "OK" do modal
+        WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[span[text()='OK']]"))).click()
+        
+        # A partir daqui, você pode adicionar outras ações ou extrair informações da página, conforme necessário.
+
+        return jsonify({"message": "Successfully navigated and interacted with the page."})
+    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+    finally:
+        # Garantir que o navegador seja fechado após a conclusão
+        driver.quit()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
