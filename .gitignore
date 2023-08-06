@@ -1,0 +1,38 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs and databases
+*.log
+*.sqlite
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# IDE - PyCharm, VS Code
+.idea/
+*.iml
+.vscode/
+
+# Virtual environment
+venv/
+*.venv
+.env
+*.env.local
+
+# Flask specific
+instance/
+.webassets-cache
+
+# Selenium
+chromedriver
+geckodriver
+
+# Other
+*.swp
+*~
